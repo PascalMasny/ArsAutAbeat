@@ -1,5 +1,5 @@
 """
-Download the famous multi-figure paintings — the ones an audience recognises.
+Download the famous multi-figure paintings; the ones an audience recognises.
 
 The Met is a fine bulk source, but it does not hold the Mona Lisa, the Last
 Supper, the Night Watch or Las Meninas. Those are the pictures whose decay the
@@ -14,14 +14,14 @@ auditable.
 
 Images are fetched at MAX_WIDTH on the long side. The originals run up to
 39137 x 22279 (Garden of Earthly Delights) and the pipeline generates at 512 px
-anyway, so full resolution would only waste disk — the reason the last catalog
+anyway, so full resolution would only waste disk; that is why the last catalog
 had to be deleted.
 
 Saves to uncanny_maker/catalog/ as "{Title}_{pageid}.jpg", matching the naming
 the rest of the pipeline expects: the stem is the artwork slug, the DB slug,
 and the Stable Diffusion seed input.
 
-Skips files that already exist — safe to re-run.
+Skips files that already exist; safe to re-run.
 
 Usage:
     python download_masterpieces.py
@@ -42,7 +42,7 @@ CATALOG_DIR = pathlib.Path(__file__).parent / "catalog"
 WIKI_API    = "https://en.wikipedia.org/w/api.php"
 MAX_WIDTH   = 1600
 BATCH       = 20  # Wikipedia accepts up to 50 titles per query; 20 keeps URLs short
-DELAY       = 1.5  # between batches — Wikipedia answers 429 without it
+DELAY       = 1.5  # between batches; Wikipedia answers 429 without it
 RETRIES     = 5
 
 # Wikimedia blocks the default requests user agent.
@@ -214,7 +214,7 @@ def main():
     args = parser.parse_args()
 
     CATALOG_DIR.mkdir(exist_ok=True)
-    print(f"{len(PAINTINGS)} curated paintings — resolving via Wikipedia…")
+    print(f"{len(PAINTINGS)} curated paintings; resolving via Wikipedia…")
     print(f"Saving to: {CATALOG_DIR}  (long side {args.width} px)\n")
 
     resolved = []
@@ -237,7 +237,7 @@ def main():
             downloaded += 1
 
     verb = "would download" if args.dry_run else "downloaded"
-    print(f"\nDone — {verb} {downloaded}, {skipped} already present")
+    print(f"\nDone: {verb} {downloaded}, {skipped} already present")
     if not args.dry_run:
         total = len(list(CATALOG_DIR.glob("*.jpg")))
         print(f"catalog/ now holds {total} source images")

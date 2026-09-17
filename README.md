@@ -105,8 +105,8 @@ requires.
 ├── uncanny_maker/          Offline preprocessing pipeline (run once)
 │   ├── iterate_degrade.py  Main script — 10 pictures per artwork (5 direct + 5 chained collapse)
 │   ├── restore_catalog.py  Re-download the exact 169 artworks from the manifest
-│   ├── download_paintings.py      Met scraper — paintings with people, ranked by figure count
-│   ├── download_masterpieces.py   Wikimedia — the famous multi-figure works
+│   ├── download_paintings.py      Met scraper: paintings with people, ranked by figure count
+│   ├── download_masterpieces.py   Wikimedia: the famous multi-figure works
 │   ├── download_human_figures.py  Superseded by download_paintings.py
 │   ├── core/               Stable Diffusion img2img + LLaVA prompt generation
 │   └── catalog/            Source artwork JPEGs (git-ignored)
@@ -189,12 +189,12 @@ results, so they build a different catalog every time.
 
 `download_paintings.py` filters the Met down to objects whose classification is
 actually a painting and that carry a person tag, then ranks by how many people
-are in the picture — the vases, bronzes and fragments that the first catalog
+are in the picture; the vases, bronzes and fragments that the first catalog
 collected are rejected outright. `download_masterpieces.py` adds the famous
 multi-figure works the Met does not own.
 
 Output: `uncanny_maker/catalog_iterations_10/{artwork_slug}/0000.jpg … 0010.jpg`
-(~3 MB per artwork — pictures are capped at 1600 px on the long side, which is
+(~3 MB per artwork; pictures are capped at 1600 px on the long side, which is
 all the resolution Stable Diffusion put into them in the first place)
 
 Both scripts are **fully resumable** — interrupted runs continue from where they stopped.

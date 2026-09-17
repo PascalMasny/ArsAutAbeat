@@ -22,7 +22,7 @@ Performance features (M4 Max / MPS):
   • All LLaVA prompts are fetched in parallel before SD starts
   • Frame saves happen in a background I/O thread — SD never stalls on disk
   • enable_attention_slicing + enable_vae_slicing for MPS memory throughput
-  • torch.compile() on the UNet — OFF by default, see --compile below
+  • torch.compile() on the UNet: OFF by default, see --compile below
   • Exponential-moving-average ETA per image
 
 Output:
@@ -40,7 +40,7 @@ torch.compile() is opt-in because it is a pessimisation on Apple silicon. Its
 mode="reduce-overhead" relies on CUDA graphs, which MPS does not have; inductor
 falls back to code that runs slower than eager. Measured on an M4, 25 steps at
 648x408: 10.2 s eager vs 16.3 s compiled, plus 49 s of one-time compilation.
-On NVIDIA the original 15–25 % gain should still hold — hence the flag.
+On NVIDIA the original 15–25 % gain should still hold; hence the flag.
 """
 
 import io
@@ -65,16 +65,16 @@ IMAGE_EXTS   = {".jpg", ".jpeg", ".png", ".webp"}
 ITERATIONS   = 10     # pictures per artwork
 
 # Output format. The generated pictures carry no detail above the SD canvas
-# size, so storing them at the source resolution as PNG only wastes disk — that
+# size, so storing them at the source resolution as PNG only wastes disk; that
 # is what made the previous catalog 11 GB and forced it to be deleted. Capped
 # JPEG is visually identical and roughly twenty times smaller.
 FRAME_EXT     = ".jpg"
 JPEG_QUALITY  = 90
-JPEG_SUBSAMPLING = 2   # 4:2:0 — invisible on already-degraded output, ~25 % smaller
+JPEG_SUBSAMPLING = 2   # 4:2:0; invisible on already-degraded output, ~25 % smaller
 MAX_LONG_SIDE = 1600   # px on the long side of every stored picture
 
 # SD canvas. A square 512x512 was fine for the portrait-format Met paintings,
-# but the famous multi-figure works are wide — the Last Supper is 1.9:1.
+# but the famous multi-figure works are wide; the Last Supper is 1.9:1.
 # Squashing those into a square makes SD generate on a distorted canvas and the
 # faces come back stretched, which reads as a rendering fault rather than as the
 # uncanny. The canvas therefore follows the painting's aspect, clamped, because
@@ -233,7 +233,7 @@ def main():
     print("Loading Stable Diffusion pipeline…")
     pipe = load_pipeline()
 
-    # torch.compile() on the UNet — opt-in: a gain on CUDA, a loss on MPS
+    # torch.compile() on the UNet, opt-in: a gain on CUDA, a loss on MPS
     if args.compile and hasattr(torch, "compile"):
         print("Compiling UNet with torch.compile() (first inference will be slower)…")
         try:

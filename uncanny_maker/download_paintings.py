@@ -2,7 +2,7 @@
 Download public-domain PAINTINGS with human figures from the Met Museum API.
 
 Replaces download_human_figures.py, whose keyword searches on the Greek & Roman
-department pulled in bronze jugs, strainers, rings and amphora fragments — the
+department pulled in bronze jugs, strainers, rings and amphora fragments; the
 objects that visibly did not work at the exhibition. This script applies three
 hard filters and a ranking:
 
@@ -12,8 +12,8 @@ hard filters and a ranking:
 
   Ranking: artworks are scored by how many people they show. Tags naming a
   distinct group (Men + Women + Children) and scene tags that imply a crowd
-  (Banquets, Processions, Battles) score highest, so multi-figure paintings —
-  the ones that worked — are downloaded first.
+  (Banquets, Processions, Battles) score highest, so multi-figure paintings,
+  the ones that worked, are downloaded first.
 
 Two things the old script got wrong, both fixed here:
 
@@ -29,7 +29,7 @@ Saves full-resolution JPEGs to uncanny_maker/catalog/ under the same
 "{Title}_{objectID}.jpg" convention the rest of the pipeline expects: the stem
 is the artwork slug, the DB slug, and the Stable Diffusion seed input.
 
-Skips files that already exist — safe to re-run.
+Skips files that already exist; safe to re-run.
 
 Usage:
     python download_paintings.py                 # 200 paintings, multi-figure first
@@ -48,7 +48,7 @@ import requests
 
 CATALOG_DIR = pathlib.Path(__file__).parent / "catalog"
 API_BASE    = "https://collectionapi.metmuseum.org/public/collection/v1"
-DELAY       = 0.12   # between API calls — keeps Akamai calm
+DELAY       = 0.12   # between API calls; keeps Akamai calm
 RETRIES     = 4
 
 # 11 = European Paintings · 15 = Robert Lehman · 17 = Medieval Art · 7 = The Cloisters
@@ -129,7 +129,7 @@ def api_get(path, params=None):
             resp = SESSION.get(f"{API_BASE}/{path}", params=params,
                                headers=JSON_ACCEPT, timeout=30)
             if resp.status_code == 403 and "html" in resp.headers.get("content-type", ""):
-                raise BlockedError("HTTP 403 — Akamai bot protection")
+                raise BlockedError("HTTP 403; Akamai bot protection")
             resp.raise_for_status()
             return resp.json()
         except Exception as e:
@@ -156,7 +156,7 @@ def fetch_object(object_id):
     if not url or not obj.get("isPublicDomain"):
         return None
 
-    # Filter 1 — it has to be a painting.
+    # Filter 1: it has to be a painting.
     kind = f"{obj.get('classification', '')} {obj.get('objectName', '')}".lower()
     if "painting" not in kind:
         return None
@@ -167,7 +167,7 @@ def fetch_object(object_id):
 
     tags = [t["term"].lower() for t in (obj.get("tags") or []) if t.get("term")]
 
-    # Filter 2 — somebody has to be in it.
+    # Filter 2: somebody has to be in it.
     score = figure_score(tags)
     if score <= 0:
         return None
@@ -257,10 +257,10 @@ def main():
 
     candidate_ids, search_failures = collect_candidates()
     if not candidate_ids:
-        raise SystemExit("\nNo candidates at all — the Met API is unreachable or blocking. Nothing was written.")
+        raise SystemExit("\nNo candidates at all; the Met API is unreachable or blocking. Nothing was written.")
 
     # ── Fetch metadata and filter ─────────────────────────────────────────
-    print(f"\nChecking {len(candidate_ids)} candidates (serial — the API blocks parallel access)…")
+    print(f"\nChecking {len(candidate_ids)} candidates (serial; the API blocks parallel access)…")
     paintings, fetch_failures = [], 0
     t0 = time.perf_counter()
     for n, obj_id in enumerate(candidate_ids, 1):
@@ -276,8 +276,8 @@ def main():
         if n % 25 == 0 or n == len(candidate_ids):
             rate = n / max(time.perf_counter() - t0, 0.01)
             eta = (len(candidate_ids) - n) / max(rate, 0.01)
-            print(f"  {n}/{len(candidate_ids)} checked — {len(paintings)} kept, "
-                  f"{fetch_failures} failed — ETA {eta/60:.1f} min   ", end="\r")
+            print(f"  {n}/{len(candidate_ids)} checked · {len(paintings)} kept, "
+                  f"{fetch_failures} failed · ETA {eta/60:.1f} min   ", end="\r")
         time.sleep(DELAY)
 
     print(f"\n\n  {len(paintings)} paintings passed the filter "
@@ -287,7 +287,7 @@ def main():
     if not paintings:
         raise SystemExit(
             "Nothing passed the filter. With this many errors that means the API blocked us, "
-            "not that no paintings exist — wait a few minutes and re-run. Nothing was written."
+            "not that no paintings exist; wait a few minutes and re-run. Nothing was written."
         )
 
     # Crowded scenes first, so a partial run still gets the good ones.
@@ -297,7 +297,7 @@ def main():
     print(f"  {crowded} of {len(top)} score ≥ 4 (multi-figure)\n")
 
     if args.dry_run:
-        print("Ranking (dry run — nothing downloaded):\n")
+        print("Ranking (dry run; nothing downloaded):\n")
         for i, p in enumerate(top, 1):
             print(f"  {i:>3}. [{p['score']:>2}] {p['title'][:50]:52} {', '.join(p['tags'][:6])}")
         return
@@ -322,7 +322,7 @@ def main():
         if download_image(p["url"], dest):
             downloaded += 1
 
-    print(f"\nDone — {downloaded} paintings in catalog/  ({skipped} already present)")
+    print(f"\nDone: {downloaded} paintings in catalog/  ({skipped} already present)")
     print("Next step: python download_masterpieces.py   (the famous ones)")
     print("Then:      python iterate_degrade.py         (generate the sequences)")
 

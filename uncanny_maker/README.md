@@ -32,7 +32,7 @@ python download_masterpieces.py             # the famous multi-figure works
 
 `download_paintings.py` searches the Met's painting departments and keeps only objects whose classification is actually a painting and that carry a person tag, ranked by how many people are in the picture so multi-figure works come first. `--min-score 4` restricts the run to crowded scenes; `--dry-run` prints the ranking without downloading.
 
-`download_masterpieces.py` adds ~60 paintings the Met does not hold — Mona Lisa, the Last Supper, the Night Watch, Las Meninas — from Wikimedia at 1600 px.
+`download_masterpieces.py` adds ~60 paintings the Met does not hold (Mona Lisa, the Last Supper, the Night Watch, Las Meninas), from Wikimedia at 1600 px.
 
 Both skip files already on disk, so they combine freely and are safe to re-run. To rebuild the *original* exhibition catalog instead, use `restore_catalog.py`.
 
@@ -54,7 +54,7 @@ committing to a full run. Delete the TEST directory afterwards.
 python iterate_degrade.py
 ```
 
-For each image in `catalog/`, generates 10 pictures with Stable Diffusion img2img in two phases: **pictures 1–5 directly from the original** (strength 0.10 → 0.30, fixed per-artwork seed — subtle coherent drift) and **pictures 6–10 chained** output-to-input (strength 0.22 → 0.42, per-step seeds — true model collapse, the paint disintegrates while the composition survives). Output frames are saved to `catalog_iterations_10/<slug>/0000.jpg` … `0010.jpg`.
+For each image in `catalog/`, generates 10 pictures with Stable Diffusion img2img in two phases: **pictures 1–5 directly from the original** (strength 0.10 → 0.30, fixed per-artwork seed; subtle coherent drift) and **pictures 6–10 chained** output-to-input (strength 0.22 → 0.42, per-step seeds; true model collapse, the paint disintegrates while the composition survives). Output frames are saved to `catalog_iterations_10/<slug>/0000.jpg` … `0010.jpg`.
 
 Resumable: frames already on disk are skipped; an artwork is considered done when its `0010.jpg` exists. Interrupted runs continue from where they left off. Delete an artwork's output directory to force regeneration.
 
@@ -63,7 +63,7 @@ Resumable: frames already on disk are skipped; an artwork is considered done whe
 | Flag | Default | Effect |
 |------|---------|--------|
 | `--workers N` | `8` | Parallel threads for LLaVA prompt fetching |
-| `--compile` | off | `torch.compile()` the UNet. A gain on CUDA, a ~60 % slowdown on MPS — measured 10.2 s vs 16.3 s per picture on an M4 |
+| `--compile` | off | `torch.compile()` the UNet. A gain on CUDA, a ~60 % slowdown on MPS; measured 10.2 s vs 16.3 s per picture on an M4 |
 
 **Tunable constants** (top of `iterate_degrade.py`):
 
@@ -93,7 +93,7 @@ Approximate runtimes per image at default settings (10 iterations):
 ```
 catalog_iterations_10/
 └── The_Dance_Class_438817/
-    ├── 0000.jpg   ← original (unmodified) — shown during BASELINE
+    ├── 0000.jpg   ← original (unmodified), shown during BASELINE
     ├── 0001.jpg   ← direct, strength 0.10
     │   …
     ├── 0005.jpg   ← direct, strength 0.30
@@ -109,8 +109,8 @@ catalog_iterations_10/
 uncanny_maker/
 ├── iterate_degrade.py          Main degradation script
 ├── test_single.py              One-artwork visual test of the current settings
-├── download_paintings.py       Met scraper — paintings with people, ranked by figure count
-├── download_masterpieces.py    Wikimedia — the famous multi-figure works
+├── download_paintings.py       Met scraper: paintings with people, ranked by figure count
+├── download_masterpieces.py    Wikimedia: the famous multi-figure works
 ├── download_human_figures.py   Superseded by download_paintings.py
 ├── config.py                   Ollama / SD model settings
 ├── requirements.txt

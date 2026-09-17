@@ -104,10 +104,10 @@ steps at 648×408:
 
 | | per picture | one-time |
 |---|---|---|
-| eager (default) | 10.2 s | — |
+| eager (default) | 10.2 s | · |
 | `--compile` | 16.3 s | +49 s compilation |
 
-On NVIDIA the original 15–25 % gain should still hold — enable it there:
+On NVIDIA the original 15–25 % gain should still hold; enable it there:
 
 ```bash
 python iterate_degrade.py --compile
@@ -117,7 +117,7 @@ python iterate_degrade.py --compile
 
 ```bash
 ls -d catalog_iterations_10/*/ | wc -l              # expect 169
-find catalog_iterations_10 -name '0010.jpg' | wc -l # expect 169 — all complete
+find catalog_iterations_10 -name '0010.jpg' | wc -l # expect 169; all complete
 du -sh catalog_iterations_10                        # expect ~0.5 GB (169 artworks)
 ```
 
@@ -190,7 +190,7 @@ pressure without helping on MPS.
 ## Building a different catalog
 
 `restore_catalog.py` rebuilds the 169 artworks the installation was first shown
-with. To collect a different — or larger — set instead, run the two download
+with. To collect a different (or larger) set instead, run the two download
 scripts. They write into the same `catalog/` directory and skip files already
 present, so they can be combined and re-run freely.
 
@@ -213,7 +213,7 @@ department returned bronze jugs, strainers, rings and amphora fragments
 alongside the figures.
 
 **`download_masterpieces.py`** fetches a curated list of famous multi-figure
-paintings that the Met does not hold — the Mona Lisa, the Last Supper, the Night
+paintings that the Met does not hold: the Mona Lisa, the Last Supper, the Night
 Watch, Las Meninas, Liberty Leading the People. It resolves each one through its
 English Wikipedia article rather than through a hardcoded Commons filename,
 because article titles are stable while Commons filenames are not, and prints the
@@ -223,8 +223,8 @@ resolved filename for every download so the picks stay auditable.
 > protection and answers a request carrying the default `python-requests` user
 > agent with HTTP 403 and an HTML block page; Wikimedia answers 429. Every script
 > here sends a descriptive user agent and retries with backoff. Parallel requests
-> to the Met get flagged quickly, so metadata is fetched serially — a full
+> to the Met get flagged quickly, so metadata is fetched serially; a full
 > 200-painting run takes roughly ten minutes, most of it waiting politely.
 
-After either path, continue with Step 2 — `iterate_degrade.py` processes
+After either path, continue with Step 2; `iterate_degrade.py` processes
 whatever is in `catalog/`.

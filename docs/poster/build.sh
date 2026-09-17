@@ -7,7 +7,7 @@
 #
 # Gesetzt ist DIN A1 hoch (594 × 841 mm) über @page in poster.css. Weil die
 # A-Reihe durchgehend 1:√2 hat, skaliert dasselbe PDF verlustfrei auf A0 oder
-# A2 — beim Druck "auf Seitengröße skalieren" wählen.
+# A2; beim Druck "auf Seitengröße skalieren" wählen.
 #
 # Gerendert wird mit Chrome/Brave im Headless-Modus, weil das die einzige
 # Engine auf diesem Rechner ist, die das Layout exakt so setzt wie die
@@ -34,7 +34,7 @@ render() {
     --no-pdf-header-footer --run-all-compositor-stages-before-draw \
     --virtual-time-budget=10000 \
     --print-to-pdf="$out" "file://$src" 2>/dev/null
-  echo "    $(basename "$out")  —  $(du -h "$out" | cut -f1)"
+  echo "    $(basename "$out")  ·  $(du -h "$out" | cut -f1)"
 }
 
 case "${1:-alle}" in

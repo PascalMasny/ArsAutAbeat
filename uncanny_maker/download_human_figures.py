@@ -1,5 +1,5 @@
 """
-SUPERSEDED by download_paintings.py — kept because docs/CATALOG_MANIFEST.md was
+SUPERSEDED by download_paintings.py; kept because docs/CATALOG_MANIFEST.md was
 built with it.
 
 Its searches on the Greek & Roman department returned bronze jugs, strainers,

@@ -1,11 +1,11 @@
 /* ──────────────────────────────────────────────────────────────────────────
-   Vallis Simulacri — Plakat-Design
+   Vallis Simulacri: Plakat-Design
    Farben und Schriften sind aus ars_aut_abeat/frontend/src/index.css
    übernommen, damit Plakat und Installation dieselbe Sprache sprechen.
 
    Alle Maße in mm. Das Layout ist auf DIN A1 hoch (594 × 841 mm) gesetzt;
    weil die A-Reihe durchgehend 1:√2 hat, skaliert dieselbe Datei verlustfrei
-   auf A0 und A2 — beim Druck einfach "auf Seitengröße skalieren" wählen.
+   auf A0 und A2; beim Druck einfach "auf Seitengröße skalieren" wählen.
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
@@ -82,7 +82,7 @@ html, body {
   color: var(--gold);
   text-align: center;
   /* Kein text-shadow: Chrome rastert den Weichzeichner beim PDF-Export in eine
-     Kachel mit harter Bounding-Box — auf dem Bogen stand ein sichtbarer heller
+     Kachel mit harter Bounding-Box; auf dem Bogen stand ein sichtbarer heller
      Kasten hinter der Zeile. Gold auf Tinte traegt auch ohne. */
 }
 
@@ -101,7 +101,7 @@ html, body {
 
 /* Ornament statt Glyphe: ❧ (U+2767) steckt weder in Cinzel noch in Cormorant.
    Im Browser springt ein Systemfont ein, im PDF mit ausschliesslich
-   eingebetteten Schriften gibt es diesen Rettungsanker nicht — dort blieben
+   eingebetteten Schriften gibt es diesen Rettungsanker nicht; dort blieben
    Tofu-Kaesten stehen. Deshalb gezeichnet statt gesetzt. */
 .divider {
   display: flex;
@@ -283,7 +283,7 @@ html, body {
 
 /* ── Fuß ────────────────────────────────────────────────────────────────── */
 .footer {
-  /* Kein margin-top:auto — das wuerde die gesamte Restluft hier sammeln und
+  /* Kein margin-top:auto; das wuerde die gesamte Restluft hier sammeln und
      das space-between des Bogens aushebeln. Die Luft soll sich gleichmaessig
      auf die Abschnitte verteilen. */
   border-top: 0.35mm solid var(--burgundy-d);

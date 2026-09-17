@@ -27,7 +27,7 @@ def load_pipeline():
     #
     # force_upcast auf der VAE reicht nicht. fp32 kostet knapp ein Drittel
     # mehr Rechenzeit pro Bild und ist die einzige Variante, die durchhaelt.
-    # CUDA bleibt bei fp16 — dort tritt der Fehler nicht auf.
+    # CUDA bleibt bei fp16; dort tritt der Fehler nicht auf.
     dtype = torch.float16 if device == "cuda" else torch.float32
     pipe = StableDiffusionImg2ImgPipeline.from_pretrained(SD_MODEL_ID, torch_dtype=dtype)
     pipe = pipe.to(device)

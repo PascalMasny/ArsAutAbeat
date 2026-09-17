@@ -29,7 +29,7 @@ iterate_degrade.py  (one run per image)
 
 Two scripts fill `catalog/`. Both skip files already on disk, so they combine freely and are safe to re-run.
 
-**`download_paintings.py` — the Met, filtered.** Searches the painting departments
+**`download_paintings.py`: the Met, filtered.** Searches the painting departments
 (11 European Paintings, 15 Robert Lehman, 17 Medieval Art, 7 The Cloisters), then
 rejects everything whose `classification` is not a painting and everything carrying
 no person tag. What survives is ranked by an estimate of how many people are in it,
@@ -39,21 +39,21 @@ so multi-figure works download first:
 figure_score = (person tags) + 2 × (scene tags) − 2 × (self-portrait)
 ```
 
-Person tags are AAT terms naming who is present — `Men`, `Women`, `Children`,
-`Saints`, `Angels`. Scene tags name an activity that needs a group — `Banquets`,
-`Processions`, `Battles`, `Dancing` — and count double, because they are the
+Person tags are AAT terms naming who is present: `Men`, `Women`, `Children`,
+`Saints`, `Angels`. Scene tags name an activity that needs a group (`Banquets`,
+`Processions`, `Battles`, `Dancing`) and count double, because they are the
 strongest available signal for a populated canvas. A score of 0 means nobody is in
 the picture and the artwork is dropped.
 
 This supersedes `download_human_figures.py`, whose searches on department 13
-(Greek & Roman Art) matched any bronze or marble object, not just figures — which
+(Greek & Roman Art) matched any bronze or marble object, not just figures. That
 is how bronze jugs, strainers, rings and amphora fragments ended up in the first
 exhibition catalog.
 
-**`download_masterpieces.py` — the famous ones.** The Met holds none of the
+**`download_masterpieces.py`: the famous ones.** The Met holds none of the
 paintings a visitor recognises on sight. This script fetches a curated list of
-them from Wikimedia — the Mona Lisa, the Last Supper, the Night Watch, Las
-Meninas, Liberty Leading the People — resolving each through its English Wikipedia
+them from Wikimedia (the Mona Lisa, the Last Supper, the Night Watch, Las
+Meninas, Liberty Leading the People), resolving each through its English Wikipedia
 article rather than a hardcoded Commons filename, because article titles are
 stable while Commons filenames are not.
 
@@ -196,7 +196,7 @@ invisible on sculpture photographs.
 
 Device is detected automatically: MPS → CUDA → CPU.
 
-The script is resumable: existing pictures are skipped; chained pictures reload their predecessor from disk. An artwork is considered complete when `0010.jpg` exists — delete its directory to force regeneration. Fixed seeds make reruns reproduce identical pictures.
+The script is resumable: existing pictures are skipped; chained pictures reload their predecessor from disk. An artwork is considered complete when `0010.jpg` exists; delete its directory to force regeneration. Fixed seeds make reruns reproduce identical pictures.
 
 ### Model
 
@@ -210,7 +210,7 @@ The script is resumable: existing pictures are skipped; chained pictures reload 
 uncanny_maker/
 └── catalog_iterations_10/
     └── The_Dance_Class_438817/
-        ├── 0000.jpg   ← source image (copy) — shown during BASELINE
+        ├── 0000.jpg   ← source image (copy), shown during BASELINE
         ├── 0001.jpg   ← direct, strength 0.10 (texture retouch)
         │   …
         ├── 0005.jpg   ← direct, strength 0.30 (drifting, still the painting)
