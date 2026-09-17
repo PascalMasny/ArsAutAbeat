@@ -105,7 +105,9 @@ requires.
 ├── uncanny_maker/          Offline preprocessing pipeline (run once)
 │   ├── iterate_degrade.py  Main script — 10 pictures per artwork (5 direct + 5 chained collapse)
 │   ├── restore_catalog.py  Re-download the exact 169 artworks from the manifest
-│   ├── download_human_figures.py  Met Museum API scraper (builds a NEW catalog)
+│   ├── download_paintings.py      Met scraper — paintings with people, ranked by figure count
+│   ├── download_masterpieces.py   Wikimedia — the famous multi-figure works
+│   ├── download_human_figures.py  Superseded by download_paintings.py
 │   ├── core/               Stable Diffusion img2img + LLaVA prompt generation
 │   └── catalog/            Source artwork JPEGs (git-ignored)
 │
@@ -169,7 +171,10 @@ pip install -r requirements.txt
 
 # Step 1 — get the source artworks. Two options:
 python restore_catalog.py          # restore the exact 169 used in the exhibition
-python download_human_figures.py   # or discover a NEW set from Met Open Access
+
+# …or build a new, larger catalog of paintings with people in them:
+python download_paintings.py --target 200   # Met, filtered to paintings with figures
+python download_masterpieces.py             # Mona Lisa, Last Supper, Night Watch, …
 
 # Step 2 — generate 10 pictures per image:
 #          1–5 direct from the original (subtle drift), 6–10 chained model collapse
@@ -179,10 +184,18 @@ python iterate_degrade.py
 
 Use `restore_catalog.py` to rebuild *this* catalog: it downloads a fixed list of
 Met object IDs under their original filenames, and since seeds are `crc32(stem)`
-the pictures come back identical. `download_human_figures.py` samples shifting
-search results by index, so it builds a different catalog every time.
+the pictures come back identical. The two download scripts sample shifting search
+results, so they build a different catalog every time.
 
-Output: `uncanny_maker/catalog_iterations_10/{artwork_slug}/0000.png … 0010.png`
+`download_paintings.py` filters the Met down to objects whose classification is
+actually a painting and that carry a person tag, then ranks by how many people
+are in the picture — the vases, bronzes and fragments that the first catalog
+collected are rejected outright. `download_masterpieces.py` adds the famous
+multi-figure works the Met does not own.
+
+Output: `uncanny_maker/catalog_iterations_10/{artwork_slug}/0000.jpg … 0010.jpg`
+(~3 MB per artwork — pictures are capped at 1600 px on the long side, which is
+all the resolution Stable Diffusion put into them in the first place)
 
 Both scripts are **fully resumable** — interrupted runs continue from where they stopped.
 
@@ -261,8 +274,8 @@ The reveal screen shows the breaking-point picture stamped **ABEAT** (no longer 
 | [`docs/CATALOG_MANIFEST.md`](docs/CATALOG_MANIFEST.md) | Reference | The exact 169 Met artworks the installation was built from |
 | [`ars_aut_abeat/README.md`](ars_aut_abeat/README.md) | Reference | App-level reference: quick start, config, state machine, DB schema |
 
-> **No images in a fresh clone.** The generated pictures (11 GB) and source
-> artworks (362 MB) are excluded from version control. A clone has code and docs
+> **No images in a fresh clone.** The generated pictures (~0.8 GB) and source
+> artworks (~450 MB) are excluded from version control. A clone has code and docs
 > only — run [`docs/HOWTO_REGENERATE_CATALOG.md`](docs/HOWTO_REGENERATE_CATALOG.md)
 > before the installation will start. Without a catalog the app runs but stays
 > stuck in IDLE forever.

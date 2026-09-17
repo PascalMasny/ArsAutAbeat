@@ -37,6 +37,20 @@ DELAY       = 0.3
 _ROW = re.compile(r"^\|\s*\d+\s*\|\s*`([^`]+)`\s*\|\s*\[(\d+)\]")
 
 
+
+# The Met API sits behind Akamai bot protection: a request carrying the default
+# python-requests user agent is answered with HTTP 403 and an HTML block page.
+# One Session with a descriptive user agent fixes it.
+SESSION = requests.Session()
+SESSION.headers.update({
+    "User-Agent": "VallisSimulacri/1.0 (TH Augsburg student art installation; non-commercial)",
+})
+# Accept is set per request, never on the session: the same session downloads
+# the images, and images.metmuseum.org answers 406 Not Acceptable when the
+# client claims to accept only JSON.
+JSON_ACCEPT  = {"Accept": "application/json"}
+IMAGE_ACCEPT = {"Accept": "image/jpeg,image/*,*/*"}
+
 def parse_manifest(path: pathlib.Path) -> list[tuple[str, int]]:
     """Returns [(stem, object_id)] in manifest order."""
     if not path.exists():
@@ -52,7 +66,8 @@ def parse_manifest(path: pathlib.Path) -> list[tuple[str, int]]:
 
 
 def image_url(object_id: int) -> Optional[str]:
-    resp = requests.get(f"{API_BASE}/objects/{object_id}", timeout=15)
+    resp = SESSION.get(f"{API_BASE}/objects/{object_id}",
+                       headers=JSON_ACCEPT, timeout=30)
     resp.raise_for_status()
     obj = resp.json()
     return obj.get("primaryImage") or obj.get("primaryImageSmall") or None
@@ -61,7 +76,7 @@ def image_url(object_id: int) -> Optional[str]:
 def download(url: str, dest: pathlib.Path) -> bool:
     tmp = dest.with_suffix(".part")
     try:
-        resp = requests.get(url, timeout=60, stream=True)
+        resp = SESSION.get(url, headers=IMAGE_ACCEPT, timeout=180, stream=True)
         resp.raise_for_status()
         with open(tmp, "wb") as f:
             for chunk in resp.iter_content(chunk_size=16384):

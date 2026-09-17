@@ -147,6 +147,7 @@ class GallerySession:
                 "title":        a["title"],
                 "artist":       a.get("artist", ""),
                 "total_frames": FRAME_COUNT,
+                "frame_ext":    a.get("frame_ext", ".jpg"),
             }
 
         collective = None

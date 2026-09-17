@@ -11,7 +11,7 @@ Total wall-clock: **~3 hours on an Apple M-series**, most of it unattended.
 
 - Python 3.10–3.12 (MediaPipe has no 3.13 wheels yet)
 - A GPU: Apple M-series (MPS) or NVIDIA (CUDA). CPU works but takes ~10× longer.
-- ~15 GB free disk (362 MB sources + 11 GB pictures + 4 GB model cache)
+- ~6 GB free disk (362 MB sources + ~0.7 GB pictures + 4 GB model cache)
 - Network access to `collectionapi.metmuseum.org` and `huggingface.co`
 - Optional: [Ollama](https://ollama.com) with the `llava` model, for prompt generation
 
@@ -40,12 +40,15 @@ Target:   .../uncanny_maker/catalog
 Restored 169/169 file(s).
 ```
 
-**Use this, not `download_human_figures.py`.** That script discovers artworks by
-keyword search and selects them by index into the result set. Met search results
-shift over time, so re-running it yields a *different* catalog: different
+**Use this to restore *this* catalog.** The download scripts discover artworks by
+keyword search and select them by index into the result set. Met search results
+shift over time, so re-running one yields a *different* catalog: different
 artworks, different filename stems, and therefore different seeds and different
-pictures. It is the right tool for building a *new* catalog, the wrong one for
+pictures. They are the right tool for building a *new* catalog, the wrong one for
 restoring this one.
+
+To build a **new** catalog instead, see
+[Building a different catalog](#building-a-different-catalog) at the end.
 
 Verify before continuing:
 
@@ -91,25 +94,35 @@ Loading Stable Diffusion pipeline…
   Done in 1.0 min → catalog_iterations_10/A_Donor_Presented_by_a_Saint_436284
 ```
 
-**Fully resumable.** Kill it and re-run any time; artworks whose `0010.png`
+**Fully resumable.** Kill it and re-run any time; artworks whose `0010.jpg`
 exists are skipped, and chained pictures reload their predecessor from disk.
 
-If `torch.compile()` errors on your PyTorch build:
+`torch.compile()` is off by default because it is a pessimisation on Apple
+silicon: its `mode="reduce-overhead"` relies on CUDA graphs, which MPS does not
+have, so inductor falls back to code slower than eager. Measured on an M4, 25
+steps at 648×408:
+
+| | per picture | one-time |
+|---|---|---|
+| eager (default) | 10.2 s | — |
+| `--compile` | 16.3 s | +49 s compilation |
+
+On NVIDIA the original 15–25 % gain should still hold — enable it there:
 
 ```bash
-python iterate_degrade.py --skip-compile
+python iterate_degrade.py --compile
 ```
 
 ## Step 3: Verify
 
 ```bash
 ls -d catalog_iterations_10/*/ | wc -l              # expect 169
-find catalog_iterations_10 -name '0010.png' | wc -l # expect 169 — all complete
-du -sh catalog_iterations_10                        # expect ~11 GB
+find catalog_iterations_10 -name '0010.jpg' | wc -l # expect 169 — all complete
+du -sh catalog_iterations_10                        # expect ~0.5 GB (169 artworks)
 ```
 
-Every artwork directory should hold 11 files, `0000.png` (the untouched source)
-through `0010.png`.
+Every artwork directory should hold 11 files, `0000.jpg` (the untouched source)
+through `0010.jpg`.
 
 ## Step 4: Run the installation
 
@@ -150,7 +163,7 @@ Step 1 did not run or wrote elsewhere. Check `ls catalog/*.jpg | wc -l`.
 **The app starts but stays on IDLE and never triggers**
 `CatalogManager` found zero artworks, so `pick_next()` returns `None` and the
 state machine cannot leave IDLE. It scans `uncanny_maker/catalog/*.jpg` and
-requires a matching `catalog_iterations_10/{stem}/0010.png`. A source JPEG with
+requires a matching `catalog_iterations_10/{stem}/0010.jpg`. A source JPEG with
 no completed sequence is silently skipped. Re-run Step 2.
 
 **Pictures 404 in the browser, artwork title shows**
@@ -163,10 +176,55 @@ first if you want LLaVA-guided prompts.
 
 **Out of memory on MPS/CUDA**
 Lower `STEPS` in `iterate_degrade.py` (25 → 15 roughly halves runtime and memory
-pressure with minor quality loss), or run with `--skip-compile`.
+pressure with minor quality loss). Do not add `--compile`; it raises memory
+pressure without helping on MPS.
 
 ## Related
 
 - [`CATALOG_MANIFEST.md`](CATALOG_MANIFEST.md) — the exact 169-artwork source list
 - [`PIPELINE.md`](PIPELINE.md) — why the two-phase degradation works the way it does
 - [`ARCHITECTURE.md`](ARCHITECTURE.md#configuration-reference-configpy) — every tunable parameter
+
+---
+
+## Building a different catalog
+
+`restore_catalog.py` rebuilds the 169 artworks the installation was first shown
+with. To collect a different — or larger — set instead, run the two download
+scripts. They write into the same `catalog/` directory and skip files already
+present, so they can be combined and re-run freely.
+
+```bash
+cd uncanny_maker
+
+python download_paintings.py --target 200   # Met, filtered to paintings with people
+python download_masterpieces.py             # the famous ones, from Wikimedia
+```
+
+**`download_paintings.py`** searches the Met's painting departments (European
+Paintings, Robert Lehman, Medieval Art, The Cloisters) and then rejects anything
+whose `classification` is not a painting and anything carrying no person tag.
+What survives is ranked by how many people are in the picture, so multi-figure
+works download first. `--min-score 4` restricts the run to crowded scenes;
+`--dry-run` prints the ranking without downloading.
+
+This replaces `download_human_figures.py`, whose searches on the Greek & Roman
+department returned bronze jugs, strainers, rings and amphora fragments
+alongside the figures.
+
+**`download_masterpieces.py`** fetches a curated list of famous multi-figure
+paintings that the Met does not hold — the Mona Lisa, the Last Supper, the Night
+Watch, Las Meninas, Liberty Leading the People. It resolves each one through its
+English Wikipedia article rather than through a hardcoded Commons filename,
+because article titles are stable while Commons filenames are not, and prints the
+resolved filename for every download so the picks stay auditable.
+
+> **Both museum APIs reject anonymous clients.** The Met sits behind Akamai bot
+> protection and answers a request carrying the default `python-requests` user
+> agent with HTTP 403 and an HTML block page; Wikimedia answers 429. Every script
+> here sends a descriptive user agent and retries with backoff. Parallel requests
+> to the Met get flagged quickly, so metadata is fetched serially — a full
+> 200-painting run takes roughly ten minutes, most of it waiting politely.
+
+After either path, continue with Step 2 — `iterate_degrade.py` processes
+whatever is in `catalog/`.

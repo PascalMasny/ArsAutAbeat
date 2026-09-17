@@ -1,4 +1,12 @@
 """
+SUPERSEDED by download_paintings.py — kept because docs/CATALOG_MANIFEST.md was
+built with it.
+
+Its searches on the Greek & Roman department returned bronze jugs, strainers,
+rings and amphora fragments alongside the figures, which is how those objects
+ended up in the exhibition catalog. Use download_paintings.py instead: it filters
+on classification and ranks by how many people are in the picture.
+
 Download ~100 public-domain images of human figures from the Met Museum API.
 Covers classical sculptures, Renaissance/Baroque portraits, and figure paintings
 (think: Mona Lisa, Girl with a Pearl Earring, marble statues, bronze figures).
@@ -70,9 +78,24 @@ SEARCHES = [
 ]
 
 
+
+# The Met API sits behind Akamai bot protection: a request carrying the default
+# python-requests user agent is answered with HTTP 403 and an HTML block page.
+# One Session with a descriptive user agent fixes it.
+SESSION = requests.Session()
+SESSION.headers.update({
+    "User-Agent": "VallisSimulacri/1.0 (TH Augsburg student art installation; non-commercial)",
+})
+# Accept is set per request, never on the session: the same session downloads
+# the images, and images.metmuseum.org answers 406 Not Acceptable when the
+# client claims to accept only JSON.
+JSON_ACCEPT  = {"Accept": "application/json"}
+IMAGE_ACCEPT = {"Accept": "image/jpeg,image/*,*/*"}
+
 def search_objects(q: str, dept: int) -> list[int]:
-    resp = requests.get(
+    resp = SESSION.get(
         f"{API_BASE}/search",
+        headers=JSON_ACCEPT,
         params={
             "hasImages":     "true",
             "isPublicDomain": "true",
@@ -86,7 +109,8 @@ def search_objects(q: str, dept: int) -> list[int]:
 
 
 def fetch_object(object_id: int) -> Optional[dict]:
-    resp = requests.get(f"{API_BASE}/objects/{object_id}", timeout=15)
+    resp = SESSION.get(f"{API_BASE}/objects/{object_id}",
+                       headers=JSON_ACCEPT, timeout=30)
     resp.raise_for_status()
     obj  = resp.json()
     url  = obj.get("primaryImage") or obj.get("primaryImageSmall")
@@ -108,7 +132,7 @@ def safe_filename(title: str, object_id: int) -> str:
 
 def download_image(url: str, dest: pathlib.Path) -> bool:
     try:
-        resp = requests.get(url, timeout=60, stream=True)
+        resp = SESSION.get(url, headers=IMAGE_ACCEPT, timeout=180, stream=True)
         resp.raise_for_status()
         with open(dest, "wb") as f:
             for chunk in resp.iter_content(chunk_size=16384):

@@ -39,7 +39,8 @@ export function GalleryPhase({ state }: Props) {
 
   if (!artwork) return null
 
-  const frameSrc = (i: number) => `/frames/${slug}/${String(i).padStart(4, '0')}.png`
+  const ext = artwork.frame_ext
+  const frameSrc = (i: number) => `/frames/${slug}/${String(i).padStart(4, '0')}${ext}`
   const visibleEmotions = EMOTION_ORDER.filter((k) => k in emotions)
 
   return (

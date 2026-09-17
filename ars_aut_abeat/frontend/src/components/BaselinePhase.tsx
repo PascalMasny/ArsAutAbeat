@@ -13,10 +13,10 @@ export function BaselinePhase({ state }: Props) {
   // Preload all gallery pictures while the viewer studies the original
   useEffect(() => {
     if (!artwork) return
-    const { slug, total_frames } = artwork
+    const { slug, total_frames, frame_ext } = artwork
     for (let i = 0; i <= total_frames; i++) {
       const img = new Image()
-      img.src = `/frames/${slug}/${String(i).padStart(4, '0')}.png`
+      img.src = `/frames/${slug}/${String(i).padStart(4, '0')}${frame_ext}`
     }
   }, [artwork?.slug])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -32,7 +32,7 @@ export function BaselinePhase({ state }: Props) {
 
   if (!artwork) return null
 
-  const firstFrameUrl = `/frames/${artwork.slug}/0000.png`
+  const firstFrameUrl = `/frames/${artwork.slug}/0000${artwork.frame_ext}`
 
   return (
     <div className="phase-layout phase-enter">

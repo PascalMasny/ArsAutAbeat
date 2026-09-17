@@ -10,8 +10,8 @@ const VERDICT_LABEL: Record<string, string> = {
   FIRMA: 'UNSHAKEN',
 }
 
-function frameUrl(slug: string, idx: number) {
-  return `/frames/${slug}/${String(idx).padStart(4, '0')}.png`
+function frameUrl(slug: string, idx: number, ext: string) {
+  return `/frames/${slug}/${String(idx).padStart(4, '0')}${ext}`
 }
 
 /** Line plot of per-picture deviation from baseline, breaking point marked. */
@@ -68,7 +68,7 @@ export function RevealPhase({ state }: Props) {
     return (
       <div className="reveal-layout phase-enter">
         <div className="reveal-single">
-          <img src={frameUrl(slug, 0)} alt={artwork.title} />
+          <img src={frameUrl(slug, 0, artwork.frame_ext)} alt={artwork.title} />
           <div className="reveal-seal reveal-seal-ars">STILL ART</div>
         </div>
         <ReactionPlot deviations={deviations} breakingIndex={null} />
@@ -108,7 +108,7 @@ export function RevealPhase({ state }: Props) {
       <div className="reveal-triple">
         {panels.map((p, n) => (
           <div className="reveal-panel" key={n} style={{ animationDelay: `${0.3 + n * 0.55}s` }}>
-            <img src={frameUrl(slug, p.idx)} alt={p.label} />
+            <img src={frameUrl(slug, p.idx, artwork.frame_ext)} alt={p.label} />
             {p.seal && (
               <div className={`reveal-seal ${p.sealClass}`}
                    style={{ animationDelay: `${0.7 + n * 0.55}s` }}>

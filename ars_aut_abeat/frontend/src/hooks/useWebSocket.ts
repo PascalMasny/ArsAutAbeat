@@ -5,6 +5,8 @@ export interface Artwork {
   title: string
   artist: string
   total_frames: number
+  /** ".jpg" for catalogs built by the current pipeline, ".png" for older ones. */
+  frame_ext: string
 }
 
 export interface Collective {

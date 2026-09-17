@@ -44,11 +44,17 @@ class CatalogManager:
             for og_path in sorted(UNCANNY_OG_DIR.glob("*.jpg")):
                 stem = og_path.stem
                 iter_dir = _ITERATIONS_ROOT / stem
-                use_iterations = (iter_dir / f"{FRAME_COUNT:04d}.png").exists()
+                # .jpg is what the pipeline writes now; .png is kept so an
+                # older, already-generated catalog still loads unchanged.
+                frame_ext = next(
+                    (e for e in (".jpg", ".png")
+                     if (iter_dir / f"{FRAME_COUNT:04d}{e}").exists()),
+                    None,
+                )
 
-                if use_iterations:
+                if frame_ext:
                     frames = [
-                        str(iter_dir / f"{n:04d}.png")
+                        str(iter_dir / f"{n:04d}{frame_ext}")
                         for n in range(FRAME_COUNT + 1)
                     ]
                 else:
@@ -59,6 +65,7 @@ class CatalogManager:
                     if not (p20.exists() and p60.exists() and p80.exists()):
                         continue
                     frames = [str(og_path), str(p20), str(p60), str(p80)]
+                    frame_ext = ".png"
 
                 slug, title = _parse_stem(stem)
 
@@ -83,6 +90,7 @@ class CatalogManager:
                     "year":       "",
                     "image_path": str(og_path),
                     "frames":     frames,
+                    "frame_ext":  frame_ext,
                 })
 
             db.commit()

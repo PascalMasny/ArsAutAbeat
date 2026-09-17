@@ -22,19 +22,25 @@ Performance features (M4 Max / MPS):
   • All LLaVA prompts are fetched in parallel before SD starts
   • Frame saves happen in a background I/O thread — SD never stalls on disk
   • enable_attention_slicing + enable_vae_slicing for MPS memory throughput
-  • torch.compile() on the UNet for ~15–25 % faster inference (PyTorch 2.x)
+  • torch.compile() on the UNet — OFF by default, see --compile below
   • Exponential-moving-average ETA per image
 
 Output:
-    catalog_iterations_10/<stem>/0000.png  ← original
-    catalog_iterations_10/<stem>/0001.png  ← iteration 1
+    catalog_iterations_10/<stem>/0000.jpg  ← original
+    catalog_iterations_10/<stem>/0001.jpg  ← iteration 1
     …
-    catalog_iterations_10/<stem>/0010.png  ← iteration 10
+    catalog_iterations_10/<stem>/0010.jpg  ← iteration 10
 
 The run is resumable: frames already on disk are skipped.
 
 Usage:
-    python iterate_degrade.py [--workers N] [--skip-compile]
+    python iterate_degrade.py [--workers N] [--compile]
+
+torch.compile() is opt-in because it is a pessimisation on Apple silicon. Its
+mode="reduce-overhead" relies on CUDA graphs, which MPS does not have; inductor
+falls back to code that runs slower than eager. Measured on an M4, 25 steps at
+648x408: 10.2 s eager vs 16.3 s compiled, plus 49 s of one-time compilation.
+On NVIDIA the original 15–25 % gain should still hold — hence the flag.
 """
 
 import io
@@ -57,6 +63,24 @@ OUTPUT_ROOT  = pathlib.Path(__file__).parent / "catalog_iterations_10"
 IMAGE_EXTS   = {".jpg", ".jpeg", ".png", ".webp"}
 
 ITERATIONS   = 10     # pictures per artwork
+
+# Output format. The generated pictures carry no detail above the SD canvas
+# size, so storing them at the source resolution as PNG only wastes disk — that
+# is what made the previous catalog 11 GB and forced it to be deleted. Capped
+# JPEG is visually identical and roughly twenty times smaller.
+FRAME_EXT     = ".jpg"
+JPEG_QUALITY  = 90
+JPEG_SUBSAMPLING = 2   # 4:2:0 — invisible on already-degraded output, ~25 % smaller
+MAX_LONG_SIDE = 1600   # px on the long side of every stored picture
+
+# SD canvas. A square 512x512 was fine for the portrait-format Met paintings,
+# but the famous multi-figure works are wide — the Last Supper is 1.9:1.
+# Squashing those into a square makes SD generate on a distorted canvas and the
+# faces come back stretched, which reads as a rendering fault rather than as the
+# uncanny. The canvas therefore follows the painting's aspect, clamped, because
+# SD 1.5 starts duplicating figures on canvases far from its training size.
+PIXEL_BUDGET  = 512 * 512
+MAX_ASPECT    = 1.6
 
 # Phase 1 — pictures 1..DIRECT_COUNT are generated DIRECTLY from the original
 # (single img2img pass, fixed seed). This keeps them genuinely close to the
@@ -112,7 +136,11 @@ class _SaveWorker:
         while True:
             image, path = self._q.get()
             try:
-                image.save(path)
+                if path.suffix.lower() in (".jpg", ".jpeg"):
+                    image.save(path, quality=JPEG_QUALITY,
+                               subsampling=JPEG_SUBSAMPLING, optimize=True)
+                else:
+                    image.save(path)
             finally:
                 self._q.task_done()
 
@@ -120,7 +148,27 @@ class _SaveWorker:
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _all_done(out_dir: pathlib.Path) -> bool:
-    return (out_dir / f"{ITERATIONS:04d}.png").exists()
+    return (out_dir / f"{ITERATIONS:04d}{FRAME_EXT}").exists()
+
+
+def _working_size(size: tuple[int, int]) -> tuple[int, int]:
+    """SD canvas for a painting: keeps its aspect, both sides multiples of 8."""
+    w, h = size
+    aspect = max(1 / MAX_ASPECT, min(MAX_ASPECT, w / h))
+    height = (PIXEL_BUDGET / aspect) ** 0.5
+    width  = height * aspect
+    snap   = lambda v: max(8, int(round(v / 8)) * 8)
+    return snap(width), snap(height)
+
+
+def _cap(image: Image.Image) -> Image.Image:
+    """Scale down so the long side is at most MAX_LONG_SIDE. Never scales up."""
+    w, h = image.size
+    longest = max(w, h)
+    if longest <= MAX_LONG_SIDE:
+        return image
+    scale = MAX_LONG_SIDE / longest
+    return image.resize((round(w * scale), round(h * scale)), Image.LANCZOS)
 
 
 def _fetch_prompt(img_path: pathlib.Path) -> tuple[pathlib.Path, str]:
@@ -144,8 +192,8 @@ def main():
     parser = argparse.ArgumentParser(description="Iterative AI degradation pipeline")
     parser.add_argument("--workers", type=int, default=8,
                         help="Thread-pool workers for parallel LLaVA queries (default: 8)")
-    parser.add_argument("--skip-compile", action="store_true",
-                        help="Skip torch.compile() on the UNet (use if it causes errors)")
+    parser.add_argument("--compile", action="store_true",
+                        help="torch.compile() the UNet. Helps on CUDA, hurts on MPS (see module docstring)")
     args = parser.parse_args()
 
     images = sorted(p for p in CATALOG_DIR.iterdir() if p.suffix.lower() in IMAGE_EXTS)
@@ -185,8 +233,8 @@ def main():
     print("Loading Stable Diffusion pipeline…")
     pipe = load_pipeline()
 
-    # torch.compile() on the UNet — gives ~15-25 % throughput gain on MPS
-    if not args.skip_compile and hasattr(torch, "compile"):
+    # torch.compile() on the UNet — opt-in: a gain on CUDA, a loss on MPS
+    if args.compile and hasattr(torch, "compile"):
         print("Compiling UNet with torch.compile() (first inference will be slower)…")
         try:
             pipe.unet = torch.compile(pipe.unet, mode="reduce-overhead", fullgraph=False)
@@ -205,29 +253,30 @@ def main():
         print(f"[{idx}/{len(pending)}] {img_path.name}")
         print(f"  Prompt: {prompt}")
 
-        original      = Image.open(img_path).convert("RGB")
-        original_size = original.size
-        source512     = original.resize((512, 512), Image.LANCZOS)
-        seed          = _seed_for(img_path.stem)
+        original    = _cap(Image.open(img_path).convert("RGB"))
+        output_size = original.size
+        work_size   = _working_size(output_size)
+        source_work = original.resize(work_size, Image.LANCZOS)
+        seed        = _seed_for(img_path.stem)
 
-        # Frame 0 = unmodified source
-        saver.submit(original.copy(), out_dir / "0000.png")
+        # Frame 0 = unmodified source (capped, but never touched by SD)
+        saver.submit(original.copy(), out_dir / f"0000{FRAME_EXT}")
 
         ema_sec: Optional[float] = None
         t0 = time.perf_counter()
-        current512: Optional[Image.Image] = None  # chain input for phase 2
+        current_work: Optional[Image.Image] = None  # chain input for phase 2
 
         for i in range(1, ITERATIONS + 1):
-            frame_path = out_dir / f"{i:04d}.png"
+            frame_path = out_dir / f"{i:04d}{FRAME_EXT}"
             if frame_path.exists():
                 # Resume: direct pictures are independent; chained ones need
                 # the predecessor as input, so reload it for the next step.
                 if i >= DIRECT_COUNT:
-                    current512 = Image.open(frame_path).convert("RGB").resize((512, 512), Image.LANCZOS)
+                    current_work = Image.open(frame_path).convert("RGB").resize(work_size, Image.LANCZOS)
                 continue
             t_iter = time.perf_counter()
 
-            working = source512 if i <= DIRECT_COUNT else current512
+            working = source_work if i <= DIRECT_COUNT else current_work
             # Direct phase: one fixed seed → coherent drift between pictures.
             # Chain phase: vary the seed per step — re-injecting the identical
             # noise pattern into a feedback loop resonates and explodes into
@@ -244,10 +293,10 @@ def main():
                 generator         = generator,
             ).images[0]
             if i >= DIRECT_COUNT:
-                current512 = result
+                current_work = result
 
             # Non-blocking save
-            saver.submit(result.resize(original_size, Image.LANCZOS), frame_path)
+            saver.submit(result.resize(output_size, Image.LANCZOS), frame_path)
 
             iter_sec = time.perf_counter() - t_iter
             ema_sec  = iter_sec if ema_sec is None else _ema(ema_sec, iter_sec)

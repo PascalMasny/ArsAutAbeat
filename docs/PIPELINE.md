@@ -5,11 +5,11 @@ The `uncanny_maker` pipeline is a standalone tool that produces the artwork cata
 ## Overview
 
 ```
-Met Museum Open Access API
+Met Museum Open Access API   ·   Wikimedia Commons
          │
          ▼
-download_human_figures.py
-         │  saves full-resolution JPEGs
+download_paintings.py  +  download_masterpieces.py
+         │  saves JPEGs (Wikimedia capped at 1600 px)
          ▼
   catalog/<ObjectID>_<Title>.jpg   (source images)
          │
@@ -20,19 +20,53 @@ iterate_degrade.py  (one run per image)
          │  1–5 direct from original (0.10 → 0.30, fixed seed)
          │  6–10 chained feedback / model collapse (0.22 → 0.42)
          ▼
-  catalog_iterations_10/<stem>/0000.png … 0010.png
+  catalog_iterations_10/<stem>/0000.jpg … 0010.jpg
 ```
 
 ---
 
 ## Step 1 — Acquiring Source Artworks
 
-`download_human_figures.py` queries the Met Museum Open Access API for public-domain works that feature human figures: classical sculptures, Renaissance portraits, figure paintings, and devotional panels.
+Two scripts fill `catalog/`. Both skip files already on disk, so they combine freely and are safe to re-run.
 
-**Query strategy**
+**`download_paintings.py` — the Met, filtered.** Searches the painting departments
+(11 European Paintings, 15 Robert Lehman, 17 Medieval Art, 7 The Cloisters), then
+rejects everything whose `classification` is not a painting and everything carrying
+no person tag. What survives is ranked by an estimate of how many people are in it,
+so multi-figure works download first:
+
+```
+figure_score = (person tags) + 2 × (scene tags) − 2 × (self-portrait)
+```
+
+Person tags are AAT terms naming who is present — `Men`, `Women`, `Children`,
+`Saints`, `Angels`. Scene tags name an activity that needs a group — `Banquets`,
+`Processions`, `Battles`, `Dancing` — and count double, because they are the
+strongest available signal for a populated canvas. A score of 0 means nobody is in
+the picture and the artwork is dropped.
+
+This supersedes `download_human_figures.py`, whose searches on department 13
+(Greek & Roman Art) matched any bronze or marble object, not just figures — which
+is how bronze jugs, strainers, rings and amphora fragments ended up in the first
+exhibition catalog.
+
+**`download_masterpieces.py` — the famous ones.** The Met holds none of the
+paintings a visitor recognises on sight. This script fetches a curated list of
+them from Wikimedia — the Mona Lisa, the Last Supper, the Night Watch, Las
+Meninas, Liberty Leading the People — resolving each through its English Wikipedia
+article rather than a hardcoded Commons filename, because article titles are
+stable while Commons filenames are not.
+
+> **Both APIs reject anonymous clients.** The Met sits behind Akamai bot
+> protection: a request carrying the default `python-requests` user agent gets
+> HTTP 403 and an HTML block page, and parallel requests are flagged within
+> seconds. Wikimedia answers 429. Every script sends a descriptive user agent,
+> fetches Met metadata serially, and retries with backoff.
+
+**Legacy query strategy** (`download_human_figures.py`, superseded)
 
 30 keyword searches are issued in sequence, each scoped to one Met department and
-carrying its own `pick` quota (`SEARCHES` in `download_human_figures.py`):
+carrying its own `pick` quota (`SEARCHES`):
 
 | Department | Searches | Examples |
 |------------|----------|----------|
@@ -95,7 +129,7 @@ for i in 6..10:                                         # phase 2: chained
     picture_i  = SD_img2img(current, prompt, strength_i, seed + i)
     current    = picture_i
 
-save original as 0000.png; pictures as <i:04d>.png      # guidance 6.0, steps 25
+save original as 0000.jpg; pictures as <i:04d>.png      # guidance 6.0, steps 25
 ```
 
 Full strength schedule: `0.10 · 0.15 · 0.20 · 0.25 · 0.30 │ 0.22 · 0.27 · 0.32 · 0.37 · 0.42` (the `│` marks the phase switch). The first pictures stay almost faithful — the visitor should not be jolted immediately — the collapse sets in at picture 6 and deepens to full disintegration by 10. This mirrors the uncanny-valley curve itself: a slow approach, then a plunge.
@@ -162,7 +196,7 @@ invisible on sculpture photographs.
 
 Device is detected automatically: MPS → CUDA → CPU.
 
-The script is resumable: existing pictures are skipped; chained pictures reload their predecessor from disk. An artwork is considered complete when `0010.png` exists — delete its directory to force regeneration. Fixed seeds make reruns reproduce identical pictures.
+The script is resumable: existing pictures are skipped; chained pictures reload their predecessor from disk. An artwork is considered complete when `0010.jpg` exists — delete its directory to force regeneration. Fixed seeds make reruns reproduce identical pictures.
 
 ### Model
 
@@ -176,13 +210,13 @@ The script is resumable: existing pictures are skipped; chained pictures reload 
 uncanny_maker/
 └── catalog_iterations_10/
     └── The_Dance_Class_438817/
-        ├── 0000.png   ← source image (copy) — shown during BASELINE
-        ├── 0001.png   ← direct, strength 0.10 (texture retouch)
+        ├── 0000.jpg   ← source image (copy) — shown during BASELINE
+        ├── 0001.jpg   ← direct, strength 0.10 (texture retouch)
         │   …
-        ├── 0005.png   ← direct, strength 0.30 (drifting, still the painting)
-        ├── 0006.png   ← chained, collapse sets in
+        ├── 0005.jpg   ← direct, strength 0.30 (drifting, still the painting)
+        ├── 0006.jpg   ← chained, collapse sets in
         │   …
-        └── 0010.png   ← chained, disintegrated
+        └── 0010.jpg   ← chained, disintegrated
 ```
 
 All frames are 512×512 px (Stable Diffusion native resolution). The gallery app upscales them to fit the display via CSS `object-fit: contain`.

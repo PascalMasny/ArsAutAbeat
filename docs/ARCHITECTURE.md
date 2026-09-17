@@ -11,8 +11,9 @@ The project is split into two independent systems that share only the filesystem
 ┌──────────────────────────────────────────────────────────────────┐
 │  OFFLINE PREPROCESSING  (run once before installation)           │
 │                                                                  │
-│  Met Museum API                                                  │
-│      └──► download_human_figures.py                              │
+│  Met Museum API · Wikimedia Commons                              │
+│      └──► download_paintings.py    (Met, ranked by figure count) │
+│      └──► download_masterpieces.py (the famous multi-figure ones)│
 │               └──► catalog/*.jpg  (source paintings)            │
 │                        └──► iterate_degrade.py                  │
 │                                 │  LLaVA → description prompt   │
@@ -20,7 +21,7 @@ The project is split into two independent systems that share only the filesystem
 │                                 │  1–5 direct from original,    │
 │                                 │  6–10 chained model collapse  │
 │                                 └──► catalog_iterations_10/     │
-│                                      {slug}/0000–0010.png        │
+│                                      {slug}/0000–0010.jpg        │
 └──────────────────────────────────────────────────────────────────┘
                               │  shared filesystem
                               ▼
@@ -101,7 +102,7 @@ The crossfade is kept short (0.7 s) so each picture change still produces a clea
 
 | File | Role |
 |------|------|
-| `manager.py` | `CatalogManager` scans `uncanny_maker/catalog_iterations_10/` on startup. An artwork is loaded when `{slug}/0010.png` exists (10-picture mode); otherwise it falls back to the legacy 4-stage format or is skipped. Auto-registers artworks in SQLite. `pick_next()` selects the least-viewed artwork for balanced data collection. |
+| `manager.py` | `CatalogManager` scans `uncanny_maker/catalog_iterations_10/` on startup. An artwork is loaded when `{slug}/0010.jpg` exists (10-picture mode); otherwise it falls back to the legacy 4-stage format or is skipped. Auto-registers artworks in SQLite. `pick_next()` selects the least-viewed artwork for balanced data collection. |
 
 ### `data/`
 
@@ -382,10 +383,10 @@ Over time `breaking_index` answers the project's research question empirically: 
 
 `CatalogManager` (`catalog/manager.py`) abstracts over two catalog formats:
 
-1. **10-picture (current):** `uncanny_maker/catalog_iterations_10/{slug}/0000.png … 0010.png`
+1. **10-picture (current):** `uncanny_maker/catalog_iterations_10/{slug}/0000.jpg … 0010.jpg`
 2. **4-stage (legacy fallback):** `catalog_uncanny/20/{slug}.png`, `60/`, `80/`
 
-The 10-picture format is used when `{slug}/0010.png` exists. Otherwise the legacy format is used if all three intermediate files are present. Artworks with neither are skipped.
+The 10-picture format is used when `{slug}/0010.jpg` exists. Otherwise the legacy format is used if all three intermediate files are present. Artworks with neither are skipped.
 
 `pick_next()` selects the artwork with the fewest viewings in the DB, ensuring data is collected evenly across the full catalog.
 
