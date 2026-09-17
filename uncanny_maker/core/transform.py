@@ -15,7 +15,20 @@ def load_pipeline():
     from diffusers import StableDiffusionImg2ImgPipeline
 
     device = _device()
-    dtype = torch.float16 if device in ("mps", "cuda") else torch.float32
+    # MPS laeuft in float32, nicht in float16.
+    #
+    # In fp16 liefert SD 1.5 auf Apple-Silicon nach den ersten ein bis zwei
+    # Gemaelden nur noch reines Schwarz: die VAE laeuft ueber, der Decode
+    # ergibt NaN. Gemessen auf einem M4, 6 Gemaelde am Stueck:
+    #
+    #   fp16                      8/12 Bilder schwarz   6,5 s/Bild
+    #   fp16 + vae force_upcast   8/12 Bilder schwarz   6,5 s/Bild
+    #   fp32                      0/12 Bilder schwarz   9,1 s/Bild
+    #
+    # force_upcast auf der VAE reicht nicht. fp32 kostet knapp ein Drittel
+    # mehr Rechenzeit pro Bild und ist die einzige Variante, die durchhaelt.
+    # CUDA bleibt bei fp16 — dort tritt der Fehler nicht auf.
+    dtype = torch.float16 if device == "cuda" else torch.float32
     pipe = StableDiffusionImg2ImgPipeline.from_pretrained(SD_MODEL_ID, torch_dtype=dtype)
     pipe = pipe.to(device)
     pipe.safety_checker = None

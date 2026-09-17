@@ -38,6 +38,9 @@ def analyze_and_prompt(image_bytes: bytes) -> str:
     raw = data.get("response", "").strip()
     if not raw:
         raise RuntimeError("Ollama returned an empty response.")
+    # LLaVA often wraps the prompt in quotes despite being told not to. They are
+    # dead tokens in CLIP, so strip them along with any trailing punctuation.
+    raw = raw.strip().strip('"\'').strip().rstrip(".")
     # Trim to 30 words max
     words = raw.split()
     return " ".join(words[:30])
