@@ -1,0 +1,315 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Vallis Simulacri — Plakat-Design
+   Farben und Schriften sind aus ars_aut_abeat/frontend/src/index.css
+   übernommen, damit Plakat und Installation dieselbe Sprache sprechen.
+
+   Alle Maße in mm. Das Layout ist auf DIN A1 hoch (594 × 841 mm) gesetzt;
+   weil die A-Reihe durchgehend 1:√2 hat, skaliert dieselbe Datei verlustfrei
+   auf A0 und A2 — beim Druck einfach "auf Seitengröße skalieren" wählen.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --ink:         #1C1410;
+  --ink-deep:    #120E0A;
+  --parchment:   #F4E8D0;
+  --parchment-d: #E0D0B0;
+  --burgundy:    #6B2C2C;
+  --burgundy-d:  #3D1818;
+  --gold:        #C9A961;
+  --gold-bright: #E8C87A;
+  --gold-dark:   #8B6F2E;
+  --sage:        #6B7B5E;
+}
+
+@page { size: 594mm 841mm; margin: 0; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 594mm;
+  height: 841mm;
+  background: var(--ink);
+  color: var(--parchment);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.sheet {
+  position: relative;
+  width: 594mm;
+  height: 841mm;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 32%, rgba(201,169,97,0.07) 0%, transparent 62%),
+    var(--ink);
+  padding: 26mm 24mm 18mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Goldrahmen wie .gilt-border in der App */
+.sheet::before {
+  content: '';
+  position: absolute;
+  inset: 10mm;
+  border: 1.1mm solid var(--gold);
+  box-shadow:
+    0 0 0 0.35mm var(--gold-dark),
+    inset 0 0 0 0.35mm var(--gold-dark),
+    0 0 12mm rgba(201,169,97,0.15),
+    inset 0 0 12mm rgba(201,169,97,0.07);
+  pointer-events: none;
+}
+
+/* ── Typografie ─────────────────────────────────────────────────────────── */
+.kicker {
+  font-family: 'Cinzel', serif;
+  font-size: 4.6mm;
+  letter-spacing: 0.42em;
+  color: var(--gold-dark);
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: 30mm;
+  line-height: 0.96;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  text-align: center;
+  /* Kein text-shadow: Chrome rastert den Weichzeichner beim PDF-Export in eine
+     Kachel mit harter Bounding-Box — auf dem Bogen stand ein sichtbarer heller
+     Kasten hinter der Zeile. Gold auf Tinte traegt auch ohne. */
+}
+
+.title--sub {
+  font-size: 19mm;
+  letter-spacing: 0.10em;
+}
+
+.subtitle {
+  font-style: italic;
+  font-size: 9.5mm;
+  color: var(--parchment-d);
+  text-align: center;
+  letter-spacing: 0.03em;
+}
+
+/* Ornament statt Glyphe: ❧ (U+2767) steckt weder in Cinzel noch in Cormorant.
+   Im Browser springt ein Systemfont ein, im PDF mit ausschliesslich
+   eingebetteten Schriften gibt es diesen Rettungsanker nicht — dort blieben
+   Tofu-Kaesten stehen. Deshalb gezeichnet statt gesetzt. */
+.divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4mm;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  width: 38mm;
+  height: 0.3mm;
+  background: linear-gradient(90deg, transparent, var(--gold-dark), transparent);
+}
+.divider i {
+  display: block;
+  width: 2.6mm;
+  height: 2.6mm;
+  transform: rotate(45deg);
+  border: 0.35mm solid var(--gold);
+}
+
+.question {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 18mm;
+  letter-spacing: 0.10em;
+  color: var(--parchment);
+  text-align: center;
+}
+
+.lead {
+  font-size: 9.2mm;
+  line-height: 1.45;
+  color: var(--parchment);
+  text-align: center;
+  max-width: 460mm;
+  margin: 0 auto;
+}
+
+.lead em { color: var(--gold-bright); font-style: italic; }
+
+.section-label {
+  font-family: 'Cinzel', serif;
+  font-size: 5.2mm;
+  letter-spacing: 0.34em;
+  color: var(--gold-dark);
+  text-transform: uppercase;
+  border-bottom: 0.3mm solid var(--burgundy-d);
+  padding-bottom: 2mm;
+  margin-bottom: 5mm;
+}
+
+.body-text {
+  font-size: 7.2mm;
+  line-height: 1.42;
+  color: var(--parchment-d);
+}
+
+.body-text strong { color: var(--gold-bright); font-weight: 600; }
+
+/* ── Bildbänder ─────────────────────────────────────────────────────────── */
+.plate-row { display: flex; gap: 6mm; }
+.plate { flex: 1; position: relative; }
+
+.plate img {
+  width: 100%;
+  display: block;
+  border: 0.5mm solid var(--gold-dark);
+}
+
+.plate-caption {
+  font-family: 'Cinzel', serif;
+  font-size: 5mm;
+  letter-spacing: 0.22em;
+  color: var(--gold-dark);
+  text-align: center;
+  margin-top: 2.5mm;
+  text-transform: uppercase;
+}
+
+.plate-caption b { display: block; color: var(--gold); font-size: 6mm; letter-spacing: 0.18em; }
+
+/* Siegel wie im REVEAL-Screen */
+.seal {
+  position: absolute;
+  top: 6mm; left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: 8mm;
+  letter-spacing: 0.2em;
+  padding: 2.4mm 6.5mm;
+  border: 0.7mm solid;
+  background: rgba(28,20,16,0.78);
+}
+.seal--ars   { color: var(--gold); border-color: var(--gold); }
+.seal--abeat { color: #D24B4B; border-color: #D24B4B; }
+
+/* ── Ablauf-Schritte ────────────────────────────────────────────────────── */
+.steps { display: flex; gap: 5mm; }
+
+.step {
+  flex: 1;
+  border: 0.35mm solid var(--burgundy-d);
+  border-top: 1mm solid var(--gold-dark);
+  padding: 6mm 5mm;
+  background: rgba(18,14,10,0.55);
+}
+
+.step-num {
+  font-family: 'Cinzel', serif;
+  font-size: 14mm;
+  font-weight: 900;
+  color: var(--gold);
+  line-height: 1;
+}
+
+.step-title {
+  font-family: 'Cinzel', serif;
+  font-size: 6.4mm;
+  letter-spacing: 0.16em;
+  color: var(--parchment);
+  margin: 3mm 0 2.5mm;
+  text-transform: uppercase;
+}
+
+.step-body { font-size: 6.6mm; line-height: 1.36; color: var(--parchment-d); }
+
+/* ── Hervorhebungen ─────────────────────────────────────────────────────── */
+.verdict-box {
+  display: flex;
+  gap: 8mm;
+  border: 0.4mm solid var(--gold-dark);
+  padding: 7mm 8mm;
+  background: rgba(107,44,44,0.12);
+}
+
+.verdict-term {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: 11mm;
+  letter-spacing: 0.14em;
+  line-height: 1;
+}
+.verdict-term.ars   { color: var(--gold); }
+.verdict-term.abeat { color: #D24B4B; }
+.verdict-gloss { font-size: 6.8mm; color: var(--parchment-d); margin-top: 1.5mm; font-style: italic; }
+
+.pull-quote {
+  font-style: italic;
+  font-size: 13mm;
+  line-height: 1.32;
+  color: var(--gold-bright);
+  text-align: center;
+  padding: 0 20mm;
+}
+
+.stat-row { display: flex; gap: 6mm; }
+.stat {
+  flex: 1;
+  text-align: center;
+  border: 0.35mm solid var(--burgundy-d);
+  padding: 5mm 3mm;
+}
+.stat-value {
+  font-family: 'Cinzel', serif;
+  font-size: 13mm;
+  font-weight: 900;
+  color: var(--gold);
+  line-height: 1;
+}
+.stat-label {
+  font-size: 4.8mm;
+  color: var(--parchment-d);
+  margin-top: 2.5mm;
+  letter-spacing: 0.06em;
+}
+
+/* ── Fuß ────────────────────────────────────────────────────────────────── */
+.footer {
+  /* Kein margin-top:auto — das wuerde die gesamte Restluft hier sammeln und
+     das space-between des Bogens aushebeln. Die Luft soll sich gleichmaessig
+     auf die Abschnitte verteilen. */
+  border-top: 0.35mm solid var(--burgundy-d);
+  padding-top: 5mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10mm;
+}
+
+.footer-left  { font-size: 5.8mm; color: var(--parchment-d); line-height: 1.4; }
+.footer-right { font-size: 4.6mm; color: var(--gold-dark); text-align: right; line-height: 1.5; }
+.footer-names {
+  font-family: 'Cinzel', serif;
+  font-size: 6mm;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+.privacy {
+  font-size: 5.4mm;
+  color: var(--sage);
+  font-style: italic;
+}
+
+/* Abstandshilfen */
+.gap  { height: 6mm; }
+.gap-l{ height: 9mm; }
