@@ -98,6 +98,10 @@ CHAIN_END       = 0.42  # picture 10: disintegrated — higher values re-cohere
 
 GUIDANCE        = 6.0   # classifier-free guidance scale
 STEPS           = 25    # inference steps per picture
+
+# A NaN VAE decode comes back as a uniformly black picture. Retry that many
+# times with a shifted seed before giving up on the artwork.
+BLACK_RETRIES   = 2
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -147,8 +151,39 @@ class _SaveWorker:
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+def _is_black(image: Image.Image) -> bool:
+    """True if every pixel is 0 — what a NaN VAE decode leaves behind.
+
+    Exact zero rather than a threshold: even the darkest painting in the
+    catalog carries highlights far above it, and every failure observed so
+    far was uniformly 0.
+    """
+    return image.convert("L").getextrema()[1] == 0
+
+
+def _frame_is_black(path: pathlib.Path) -> bool:
+    """_is_black() for a frame on disk. Unreadable counts as broken as well."""
+    try:
+        with Image.open(path) as im:
+            im.draft("L", (64, 64))  # JPEG DCT scaling — decodes ~20x faster
+            return _is_black(im)
+    except OSError:
+        return True
+
+
 def _all_done(out_dir: pathlib.Path) -> bool:
-    return (out_dir / f"{ITERATIONS:04d}{FRAME_EXT}").exists()
+    """Done = every frame is there AND none of them is black.
+
+    Testing only the last frame is what let the fp16 black frames (see
+    core/transform.py) outlive the fix: they were on disk, so both this
+    check and the resume check inside the loop skipped them on every
+    subsequent run. A black frame now counts as a missing one.
+    """
+    for i in range(ITERATIONS + 1):
+        frame = out_dir / f"{i:04d}{FRAME_EXT}"
+        if not frame.exists() or _frame_is_black(frame):
+            return False
+    return True
 
 
 def _working_size(size: tuple[int, int]) -> tuple[int, int]:
@@ -243,6 +278,7 @@ def main():
     print("Pipeline ready.\n")
 
     saver = _SaveWorker()
+    failed: list[str] = []
 
     # ── Process each image sequentially ───────────────────────────────────────
     for idx, img_path in enumerate(pending, 1):
@@ -265,15 +301,21 @@ def main():
         ema_sec: Optional[float] = None
         t0 = time.perf_counter()
         current_work: Optional[Image.Image] = None  # chain input for phase 2
+        chain_dirty  = False  # a chained frame was redone → every later one is stale
+        abandoned    = False
 
         for i in range(1, ITERATIONS + 1):
             frame_path = out_dir / f"{i:04d}{FRAME_EXT}"
-            if frame_path.exists():
-                # Resume: direct pictures are independent; chained ones need
-                # the predecessor as input, so reload it for the next step.
-                if i >= DIRECT_COUNT:
-                    current_work = Image.open(frame_path).convert("RGB").resize(work_size, Image.LANCZOS)
-                continue
+            if frame_path.exists() and not chain_dirty:
+                if _frame_is_black(frame_path):
+                    print(f"  {i:>3}/{ITERATIONS}  black on disk — regenerating")
+                    frame_path.unlink()
+                else:
+                    # Resume: direct pictures are independent; chained ones need
+                    # the predecessor as input, so reload it for the next step.
+                    if i >= DIRECT_COUNT:
+                        current_work = Image.open(frame_path).convert("RGB").resize(work_size, Image.LANCZOS)
+                    continue
             t_iter = time.perf_counter()
 
             working = source_work if i <= DIRECT_COUNT else current_work
@@ -281,19 +323,41 @@ def main():
             # Chain phase: vary the seed per step — re-injecting the identical
             # noise pattern into a feedback loop resonates and explodes into
             # high-frequency artefacts instead of painterly collapse.
-            generator = torch.Generator(pipe.device.type).manual_seed(
-                seed if i <= DIRECT_COUNT else seed + i
-            )
-            result  = pipe(
-                prompt            = prompt,
-                image             = working,
-                strength          = _strength_for(i),
-                guidance_scale    = GUIDANCE,
-                num_inference_steps = STEPS,
-                generator         = generator,
-            ).images[0]
+            base_seed = seed if i <= DIRECT_COUNT else seed + i
+            result = None
+            for attempt in range(BLACK_RETRIES + 1):
+                generator = torch.Generator(pipe.device.type).manual_seed(
+                    base_seed + attempt * ITERATIONS
+                )
+                candidate = pipe(
+                    prompt            = prompt,
+                    image             = working,
+                    strength          = _strength_for(i),
+                    guidance_scale    = GUIDANCE,
+                    num_inference_steps = STEPS,
+                    generator         = generator,
+                ).images[0]
+                # Never let a black decode reach the disk. Once written it looks
+                # finished to the resume check and the sequence is silently dead.
+                if not _is_black(candidate):
+                    result = candidate
+                    break
+                if attempt < BLACK_RETRIES:
+                    print(f"\n  !! frame {i} decoded to pure black — "
+                          f"retry {attempt + 1}/{BLACK_RETRIES}")
+
+            if result is None:
+                print(f"\n  !! {img_path.name}: frame {i} stays black after "
+                      f"{BLACK_RETRIES} retries — abandoning this artwork. Its "
+                      f"{ITERATIONS:04d}{FRAME_EXT} is never written, so the next "
+                      f"run picks it up again.")
+                failed.append(f"{img_path.name} (frame {i})")
+                abandoned = True
+                break
+
             if i >= DIRECT_COUNT:
                 current_work = result
+                chain_dirty  = True
 
             # Non-blocking save
             saver.submit(result.resize(output_size, Image.LANCZOS), frame_path)
@@ -308,11 +372,18 @@ def main():
             )
 
         elapsed = time.perf_counter() - t0
-        print(f"\n  Done in {elapsed/60:.1f} min → {out_dir}\n")
+        verb = "Abandoned after" if abandoned else "Done in"
+        print(f"\n  {verb} {elapsed/60:.1f} min → {out_dir}\n")
 
     # Flush remaining saves before exit
     print("Flushing remaining frame saves…")
     saver.flush()
+    if failed:
+        print(f"\n{len(failed)} artwork(s) abandoned on a black decode:")
+        for name in failed:
+            print(f"  • {name}")
+        print("Rerun to retry them — nothing partial was marked as complete.")
+
     print(f"\nAll done. Output: {OUTPUT_ROOT}")
 
 

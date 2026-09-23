@@ -56,7 +56,9 @@ python iterate_degrade.py
 
 For each image in `catalog/`, generates 10 pictures with Stable Diffusion img2img in two phases: **pictures 1–5 directly from the original** (strength 0.10 → 0.30, fixed per-artwork seed; subtle coherent drift) and **pictures 6–10 chained** output-to-input (strength 0.22 → 0.42, per-step seeds; true model collapse, the paint disintegrates while the composition survives). Output frames are saved to `catalog_iterations_10/<slug>/0000.jpg` … `0010.jpg`.
 
-Resumable: frames already on disk are skipped; an artwork is considered done when its `0010.jpg` exists. Interrupted runs continue from where they left off. Delete an artwork's output directory to force regeneration.
+Resumable: intact frames already on disk are skipped, and an artwork counts as done only when all eleven of its frames are there and none of them is black. Interrupted runs continue from where they left off; a black frame is deleted and regenerated. Delete an artwork's output directory to force a full regeneration.
+
+A uniformly black frame is what a NaN VAE decode produces (see `core/transform.py` on fp16 vs. fp32 on MPS). The run never writes one: a black decode is retried with a shifted seed, and if it stays black the artwork is abandoned without writing its `0010.jpg`, so the next run retries it instead of treating it as finished.
 
 **Options:**
 
